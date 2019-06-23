@@ -6,4 +6,8 @@
 {% for file_url in file_urls %}
     <li><img style="height: 150px" src="{{ file_url }}"></li>
 {% endfor %}
+
+{% for prediction in predictions %}
+    <li>"{{ prediction }}"</li>
+{% endfor %}
 </ul>
