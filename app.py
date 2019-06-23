@@ -14,6 +14,7 @@ from flask_uploads import UploadSet, configure_uploads, IMAGES, patch_request_cl
 # from keras.applications.resnet50 import ResNet50, preprocess_input
 # from keras.applications.xception import Xception, preprocess_input
 from keras.applications import resnet50, xception
+from keras.backend import clear_session
 from keras.layers import Conv2D, Dense, MaxPooling2D, GlobalAveragePooling2D
 from keras.models import Sequential
 from keras.preprocessing import image
@@ -21,6 +22,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pickle
+import tensorflow as tf
 
 app = Flask(__name__)
 
@@ -41,6 +43,36 @@ app.config['UPLOADED_PHOTOS_DEST'] = Path.cwd() / 'uploads'
 photos = UploadSet('photos', IMAGES)
 configure_uploads(app, photos)
 patch_request_class(app)
+
+def load_resnet50_model():
+    """
+    """
+
+
+    clear_session()
+    resnet50_model = resnet50.ResNet50(weights='imagenet')
+    global resnet50_graph
+    resnet50_graph = tf.get_default_graph()
+    return resnet50_model
+
+
+def load_xception_model():
+    """
+    """
+
+    clear_session()
+    xception_model = Sequential()
+    xception_model.add(GlobalAveragePooling2D(input_shape=(7, 7, 2048)))
+    xception_model.add(Dense(133, activation='softmax'))
+    xception_model.compile(
+        loss='categorical_crossentropy',
+        optimizer='rmsprop',
+        metrics=['accuracy'])
+    xception_model.load_weights('utility_files/weights.best.Xception.hdf5')
+    global xception_graph
+    xception_graph = tf.get_default_graph()
+    return xception_model
+
 
 
 def face_detector(img_path):
@@ -97,25 +129,11 @@ def dog_detector(img_path):
         "True if a dog is detected in the image
     """
 
-    resnet50_model = resnet50.ResNet50(weights='imagenet')
+    resnet50_model = load_resnet50_model()
     img = resnet50.preprocess_input(path_to_tensor(img_path))
-    prediction = np.argmax(resnet50_model.predict(img))
+    with resnet50_graph.as_default():
+        prediction = np.argmax(resnet50_model.predict(img))
     return ((prediction <= 268) & (prediction >= 151))
-
-
-def load_xception_model():
-    """
-    """
-
-    xception_model = Sequential()
-    xception_model.add(GlobalAveragePooling2D(input_shape=(7, 7, 2048)))
-    xception_model.add(Dense(133, activation='softmax'))
-    xception_model.compile(
-        loss='categorical_crossentropy',
-        optimizer='rmsprop',
-        metrics=['accuracy'])
-    xception_model.load_weights('utility_files/weights.best.Xception.hdf5')
-    return xception_model
 
 
 def predict_breed(img_path):
@@ -140,7 +158,8 @@ def predict_breed(img_path):
     bottleneck_feature = xception.Xception(
         weights='imagenet',
         include_top=False).predict(img)
-    predicted_vector = xception_model.predict(bottleneck_feature)
+    with xception_graph.as_default():
+        predicted_vector = xception_model.predict(bottleneck_feature)
     prediction = dog_names[np.argmax(predicted_vector)]
 
     return prediction
@@ -231,6 +250,6 @@ def predictions():
     img_paths = [str(file) for file in Path.cwd().joinpath('uploads').iterdir()]
     predictions = []
     for img_path in img_paths:
-        prediction = dog_detector(img_path)
+        prediction = predict_breed(img_path)
         predictions.append(prediction)
     return render_template('predictions.html', predictions=predictions)
