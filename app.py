@@ -42,27 +42,6 @@ photos = UploadSet('photos', IMAGES)
 configure_uploads(app, photos)
 patch_request_class(app)
 
-# Load list of dog breed names
-with open('utility_files/dog_names.pickle', 'rb') as f:
-    dog_names = pickle.load(f)
-
-# Load human face detector
-face_cascade = cv2.CascadeClassifier(
-    'utility_files/haarcascade_frontalface_alt.xml')
-
-# Load resnet50 model for dog identifier
-resnet50_model = resnet50.ResNet50(weights='imagenet')
-
-# Load xception model for breed classifier
-xception_model = Sequential()
-xception_model.add(GlobalAveragePooling2D(input_shape=(7, 7, 2048)))
-xception_model.add(Dense(133, activation='softmax'))
-xception_model.compile(
-    loss='categorical_crossentropy',
-    optimizer='rmsprop',
-    metrics=['accuracy'])
-xception_model.load_weights('utility_files/weights.best.Xception.hdf5')
-
 
 def face_detector(img_path):
     """Detect human faces in a given image
@@ -78,6 +57,8 @@ def face_detector(img_path):
         True if human face(s) detected in image
     """
 
+    face_cascade = cv2.CascadeClassifier(
+        'utility_files/haarcascade_frontalface_alt.xml')
     img = cv2.imread(img_path)
     grayscale_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     faces = face_cascade.detectMultiScale(grayscale_img)
@@ -116,9 +97,25 @@ def dog_detector(img_path):
         "True if a dog is detected in the image
     """
 
+    resnet50_model = resnet50.ResNet50(weights='imagenet')
     img = resnet50.preprocess_input(path_to_tensor(img_path))
     prediction = np.argmax(resnet50_model.predict(img))
     return ((prediction <= 268) & (prediction >= 151))
+
+
+def load_xception_model():
+    """
+    """
+
+    xception_model = Sequential()
+    xception_model.add(GlobalAveragePooling2D(input_shape=(7, 7, 2048)))
+    xception_model.add(Dense(133, activation='softmax'))
+    xception_model.compile(
+        loss='categorical_crossentropy',
+        optimizer='rmsprop',
+        metrics=['accuracy'])
+    xception_model.load_weights('utility_files/weights.best.Xception.hdf5')
+    return xception_model
 
 
 def predict_breed(img_path):
@@ -135,7 +132,10 @@ def predict_breed(img_path):
         The predicted breed of the dog in the image
     """
 
+    with open('utility_files/dog_names.pickle', 'rb') as f:
+        dog_names = pickle.load(f)
 
+    xception_model = load_xception_model()
     img = xception.preprocess_input(path_to_tensor(img_path))
     bottleneck_feature = xception.Xception(
         weights='imagenet',
@@ -156,11 +156,13 @@ def match_dog_breed(img_path):
     """
 
     if face_detector(img_path):
+        print("face detector triggered...")
         result = predict_breed(img_path)
     elif dog_detector(img_path):
-        print("made it this far...")
+        print("dog detector triggered...")
         result = predict_breed(img_path)
     else:
+        print('nothing detected...')
         result = predict_breed(img_path)
 
     return result
@@ -169,44 +171,42 @@ def match_dog_breed(img_path):
 @app.route('/', methods=['GET', 'POST'])
 def index():
 
-    # [file.unlink() for file in Path("./uploads").iterdir()]
-    # session['file_urls'] = []
-    # session['predictions'] = []
+    [file.unlink() for file in Path("./uploads").iterdir()]
+    session['file_urls'] = []
+    session['predictions'] = []
 
-    # # list to hold uploaded image urls
-    # file_urls = session['file_urls']
-    # predictions = session['predictions']
+    # list to hold uploaded image urls
+    file_urls = session['file_urls']
+    predictions = session['predictions']
 
-    # # handle image upload from Dropszone
-    # if request.method == 'POST':
-    #     file_obj = request.files
-    #     for f in file_obj:
-    #         file = request.files.get(f)
+    # handle image upload from Dropszone
+    if request.method == 'POST':
+        file_obj = request.files
+        for f in file_obj:
+            file = request.files.get(f)
 
-    #         # save the file to the uploads folder
-    #         filename = photos.save(
-    #             file,
-    #             name=file.filename
-    #         )
+            # save the file to the uploads folder
+            filename = photos.save(
+                file,
+                name=file.filename
+            )
 
-    #         # append image urls
-    #         file_urls.append(photos.url(filename))
+            # append image urls
+            file_urls.append(photos.url(filename))
 
-    #         # predict dog breed based on image
-    #         # img_path = str(Path.cwd() / "uploads" / file.filename)
-    #         # prediction = match_dog_breed(img_path)
-    #         # prediction = predict_breed(img_path)
-    #         prediction = predict_breed("test_images/Brittany_02625.jpg")
-    #         predictions.append(prediction)
+            # predict dog breed based on image
+            # img_path = str(Path.cwd() / "uploads" / file.filename)
+            # prediction = match_dog_breed(img_path)
+            # prediction = predict_breed(img_path)
+            # prediction = predict_breed("test_images/Brittany_02625.jpg")
+            # predictions.append(prediction)
 
-    #     session['file_urls'] = file_urls
-    #     session['predictions'] = predictions
-    #     return "uploading..."
-
-    result = predict_breed("test_images/Brittany_02625.jpg")
+        session['file_urls'] = file_urls
+        # session['predictions'] = predictions
+        return "uploading..."
 
     # return dropzone template on GET request
-    return render_template('index.html', result=result)
+    return render_template('index.html')
 
 
 @app.route('/results')
@@ -222,5 +222,15 @@ def results():
     session.pop('file_urls', None)
     session.pop('predictions', None)
 
-    return render_template('results.html', file_urls=file_urls, predictions=predictions)
+    return render_template('results.html', file_urls=file_urls)
 
+
+@app.route('/predictions')
+def predictions():
+
+    img_paths = [str(file) for file in Path.cwd().joinpath('uploads').iterdir()]
+    predictions = []
+    for img_path in img_paths:
+        prediction = dog_detector(img_path)
+        predictions.append(prediction)
+    return render_template('predictions.html', predictions=predictions)
