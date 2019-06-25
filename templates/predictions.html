@@ -1,0 +1,13 @@
+<!-- templates/predictions.html -->
+
+<h1>Predictions</h1>
+<div>
+    {% for file_url in file_urls %}
+        <img style="height: 150px" src="{{ file_url }}">
+    {% endfor %}
+</div>
+{% for prediction in predictions %}
+    <p>{{ prediction }}</p>
+{% endfor %}
+<p>
+<a href="{{ url_for('index') }}">Back to Home</a>

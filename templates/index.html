@@ -5,10 +5,17 @@
     <head>
         <title>Flask App</title>
           {{ dropzone.load() }}
+          {{ dropzone.config(max_files=1, default_message="Drop file here or click to upload") }}
           {{ dropzone.style('border: 2px dashed #0087F7; margin: 10%; min-height: 400px;') }}
+          {{ result }}
     </head>
     <body>
-        <h1>Hello from Flask!</h1>
+        <h1>Dog breed classifier app</h1>
+        <p>
+            This web app is designed to take an image of a dog or a human
+            and predict the closest associated dog breed. Which dog breed
+            are you?
+        </p>
         {{ dropzone.create(action_view='index') }}
       </body>
 </html>

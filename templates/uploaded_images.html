@@ -1,0 +1,12 @@
+<!-- templates/uploaded_images.html -->
+
+<h1>Uploaded images</h1>
+<p>
+<div>
+{% for file_url in file_urls %}
+    <img style="height: 150px" src="{{ file_url }}">
+{% endfor %}
+</div>
+<a href="{{ url_for('predictions') }}">Guess what this is...</a>
+<p>
+<a href="{{ url_for('index') }}">Back to Home</a>
