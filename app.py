@@ -6,6 +6,8 @@ Acknowledgements
 """
 
 from pathlib import Path
+import os
+import pickle
 
 import cv2
 from flask import Flask, redirect, render_template, request, session, url_for
@@ -18,13 +20,11 @@ from keras.models import Sequential
 from keras.preprocessing import image
 import matplotlib.pyplot as plt
 import numpy as np
-import os
-import pickle
 import tensorflow as tf
 
-from pprint import pprint
 
 app = Flask(__name__)
+
 
 # App configuration
 app.config['SECRET_KEY'] = 'supersecretkeygoeshere'
@@ -44,8 +44,14 @@ photos = UploadSet('photos', IMAGES)
 configure_uploads(app, photos)
 patch_request_class(app)
 
+
 def load_resnet50_model():
-    """
+    """Instantiate the keras Resnet50 convolutional neural network
+
+    Returns
+    -------
+    keras.applications.resnet50.Resnet50
+        Resnet50 CNN with weights trained on imagenet
     """
 
     clear_session()
@@ -56,7 +62,14 @@ def load_resnet50_model():
 
 
 def load_xception_model():
-    """
+    """Instantiate the keras Xception convolutional neural network
+
+    Returns
+    -------
+    keras.models.Sequential
+        The final fully connected layers of an Xception-based CNN where
+        the weights of the fully connected layers are trained to
+        differentiate between different dog breeds
     """
 
     clear_session()
