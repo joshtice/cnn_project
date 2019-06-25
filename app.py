@@ -11,8 +11,6 @@ import cv2
 from flask import Flask, redirect, render_template, request, session, url_for
 from flask_dropzone import Dropzone
 from flask_uploads import UploadSet, configure_uploads, IMAGES, patch_request_class
-# from keras.applications.resnet50 import ResNet50, preprocess_input
-# from keras.applications.xception import Xception, preprocess_input
 from keras.applications import resnet50, xception
 from keras.backend import clear_session
 from keras.layers import Conv2D, Dense, MaxPooling2D, GlobalAveragePooling2D
@@ -24,6 +22,8 @@ import os
 import pickle
 import tensorflow as tf
 
+from pprint import pprint
+
 app = Flask(__name__)
 
 # App configuration
@@ -33,10 +33,10 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # Dropzone configuration
 dropzone = Dropzone(app)
-app.config['DROPZONE_UPLOAD_MULTIPLE'] = False
+app.config['DROPZONE_UPLOAD_MULTIPLE'] = True
 app.config['DROPZONE_ALLOWED_FILE_CUSTOM'] = True
 app.config['DROPZONE_ALLOWED_FILE_TYPE'] = 'image/*'
-app.config['DROPZONE_REDIRECT_VIEW'] = 'results'
+app.config['DROPZONE_REDIRECT_VIEW'] = 'uploaded_images'
 
 # Uploads configuration
 app.config['UPLOADED_PHOTOS_DEST'] = Path.cwd() / 'uploads'
@@ -47,7 +47,6 @@ patch_request_class(app)
 def load_resnet50_model():
     """
     """
-
 
     clear_session()
     resnet50_model = resnet50.ResNet50(weights='imagenet')
@@ -165,7 +164,7 @@ def predict_breed(img_path):
     return prediction
 
 
-def match_dog_breed(img_path):
+def main_algorithm(img_path):
     """Detect whether an image contains a dog or human, then guess breed
 
     Parameters
@@ -175,33 +174,40 @@ def match_dog_breed(img_path):
     """
 
     if face_detector(img_path):
-        print("face detector triggered...")
-        result = predict_breed(img_path)
+        breed = predict_breed(img_path)
+        return("Looks like a human! If this were a dog, though, I would"
+               " guess a {}".format(breed))
     elif dog_detector(img_path):
-        print("dog detector triggered...")
-        result = predict_breed(img_path)
+        breed = predict_breed(img_path)
+        return("Looks like a dog! Perhaps a {}".format(breed))
     else:
-        print('nothing detected...')
-        result = predict_breed(img_path)
-
-    return result
+        return("Well...I have now idea what this is. Apologies. "
+               "Please try another image.")
 
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
 
     [file.unlink() for file in Path("./uploads").iterdir()]
-    session['file_urls'] = []
-    session['predictions'] = []
+    if 'file_urls' in session:
+        session['file_urls'] = []
 
     # list to hold uploaded image urls
-    file_urls = session['file_urls']
-    predictions = session['predictions']
+    file_urls = []
+    predictions = []
 
     # handle image upload from Dropszone
     if request.method == 'POST':
-        file_obj = request.files
-        for f in file_obj:
+
+        if 'file_urls' not in session:
+            session['file_urls'] = []
+        # if 'results' not in session:
+        #     session['results'] = []
+
+        file_urls = session['file_urls']
+        # results = session['results']
+
+        for f in request.files:
             file = request.files.get(f)
 
             # save the file to the uploads folder
@@ -215,13 +221,11 @@ def index():
 
             # predict dog breed based on image
             # img_path = str(Path.cwd() / "uploads" / file.filename)
-            # prediction = match_dog_breed(img_path)
-            # prediction = predict_breed(img_path)
-            # prediction = predict_breed("test_images/Brittany_02625.jpg")
-            # predictions.append(prediction)
+            # result = main_algorithm(img_path)
+            # results.append(result)
 
         session['file_urls'] = file_urls
-        # session['predictions'] = predictions
+        # session['results'] = results
         return "uploading..."
 
     # return dropzone template on GET request
@@ -229,7 +233,7 @@ def index():
 
 
 @app.route('/results')
-def results():
+def uploaded_images():
 
     # redirect to home if no images to display
     if "file_urls" not in session or session['file_urls'] == []:
@@ -237,19 +241,21 @@ def results():
 
     # set the file_urls and remove the session variable
     file_urls = session['file_urls']
-    predictions = session['predictions']
-    session.pop('file_urls', None)
-    session.pop('predictions', None)
+    # session.pop('file_urls', None)
 
-    return render_template('results.html', file_urls=file_urls)
+    return render_template('uploaded_images.html', file_urls=file_urls)
 
 
 @app.route('/predictions')
 def predictions():
 
+    file_urls = session['file_urls']
+    session.pop('file_urls', None)
     img_paths = [str(file) for file in Path.cwd().joinpath('uploads').iterdir()]
     predictions = []
     for img_path in img_paths:
-        prediction = predict_breed(img_path)
+        prediction = main_algorithm(img_path)
         predictions.append(prediction)
-    return render_template('predictions.html', predictions=predictions)
+    return render_template('predictions.html',
+        file_urls=file_urls,
+        predictions=predictions)
