@@ -1,12 +1,29 @@
 #! /usr/bin/env python3
 
 """
+Name:   app.py
+Author: Joshua Tice
+Date:   June 30, 2019
+
+Description
+-----------
+This app allows a user to predict which breed of dog a human or dog
+looks like. The workflow starts with the user uploading the image, then
+the user clicks a link to initiate the app's algorithm. Finally, the
+output is displayed alongside the image.
 
 Acknowledgements
+----------------
+The main portions of the flask backend were adopted from Dustin
+D'Avignon's Medium post entitled "Upload multiple images with Python,
+Flask, and Flask Dropzone." Many thanks to Dustin for the head start.
+
+https://medium.com/@dustindavignon/upload-multiple-images-with-python-
+flask-and-flask-dropzone-d5b821829b1d
 """
 
-from pathlib import Path
 import os
+from pathlib import Path
 import pickle
 
 import cv2
