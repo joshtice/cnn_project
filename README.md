@@ -76,7 +76,7 @@ To run the dog breed classification app, follow the installation instructions ab
 
 The app can then be accessed from a browser at http://127.0.0.1:5000/
 
-## 5. Liensing, Authors, Acknowledgements
+## 5. Licensing, Authors, Acknowledgements
 
 - **Licensing**: [MIT License](https://choosealicense.com/licenses/mit/); see LICENSE.txt  
 - **Author**: Joshua Tice ([LinkedIn](www.linkedin.com/in/joshuatice))  
