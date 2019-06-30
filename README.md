@@ -28,7 +28,9 @@ dog_app
 ├── README.md
 ├── LICENSE.txt
 ├── requirements.txt
+├── tice_dog_app_notebook.html
 ├── app.py
+├── .gitignore
 │
 ├── templates
 │   ├── index.html
@@ -41,6 +43,7 @@ dog_app
     └── dog_names.pickle
 ```
 
+- tice_dog_app_notebook.html - The completed jupyter notebook that contains the preliminary analysis for the app
 - app.py - Contains the main functionality of the app. Notably, the code includes the following elements:
   - Human face recognition algorithm from OpenCV
   - Dog recognition algorithm based on the Resnet50 CNN
